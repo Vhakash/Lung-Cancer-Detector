@@ -16,7 +16,7 @@ from model import MockModel, create_model, load_pretrained_model
 from preprocessing import preprocess_image, ensure_color_channels
 from visualization import visualize_prediction, visualize_model_performance, visualize_activation_maps, visualize_feature_maps
 from utils import read_dicom_file, display_dicom_info, calculate_prediction_confidence, add_to_history, get_analysis_history, clear_analysis_history, compare_model_performances, initialize_analysis_history
-from sample_data import get_sample_image, get_sample_image_names
+
 from image_enhancement import apply_enhancement, get_available_enhancements
 
 # Initialize session state for tracking analysis history
@@ -40,10 +40,11 @@ with col1:
     st.markdown("""
     ### Early detection saves lives
     This AI-powered tool analyzes medical images to detect potential signs of lung cancer.
-    Simply upload a lung CT scan or X-ray image, or try one of our sample images.
+    Simply upload a lung CT scan or X-ray image to get started.
     """)
 with col2:
-    st.image("https://raw.githubusercontent.com/streamlit/example-data/master/logo.jpg", width=150)
+    st.markdown("### 🏥 Medical AI Technology")
+    st.markdown("Advanced deep learning for early detection")
     
 # Add a divider for better visual organization
 st.divider()
@@ -84,13 +85,7 @@ enhancement_strength = st.sidebar.slider(
     disabled=(enhancement_option == "None")
 )
 
-# Sample Images with emoji
-st.sidebar.markdown("### 🔬 Sample Medical Images")
-sample_option = st.sidebar.selectbox(
-    "Select Sample Case",
-    ["None"] + get_sample_image_names(),
-    index=0
-)
+
 
 # Model Comparison
 if st.sidebar.button("Compare Models"):
@@ -212,80 +207,51 @@ if not (st.session_state.show_model_comparison or st.session_state.show_history)
     # Create header section for main interface
     st.header("Analyze Medical Image")
     
-    # Input method tabs
-    tab1, tab2 = st.tabs(["Upload Image", "Use Sample Image"])
+    # File upload section
+    uploaded_file = st.file_uploader(
+        "Choose a lung CT scan or X-ray image file", 
+        type=["jpg", "jpeg", "png", "dcm"]
+    )
     
-    use_sample = False
-    
-    # Tab 1: Upload Image
-    with tab1:
-        uploaded_file = st.file_uploader(
-            "Choose a lung CT scan or X-ray image file", 
-            type=["jpg", "jpeg", "png", "dcm"]
-        )
-    
-    # Tab 2: Sample Image
-    with tab2:
-        if sample_option != "None":
-            st.write(f"Selected sample: **{sample_option}**")
-            sample_image = get_sample_image(sample_option)
-            if sample_image:
-                st.image(sample_image, caption=f"Sample Image: {sample_option}", use_container_width=True)
-                use_sample = True
-    
-    # Process images (either uploaded or sample)
-    if uploaded_file is not None or use_sample:
+    # Process uploaded image
+    if uploaded_file is not None:
         # Creating columns for display
         col1, col2 = st.columns(2)
         
         try:
-            # Process uploaded file
-            if uploaded_file is not None:
-                # Determine file type and read accordingly
-                file_extension = uploaded_file.name.split('.')[-1].lower()
-                
-                if file_extension == 'dcm':
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.dcm') as temp_file:
-                        temp_file.write(uploaded_file.getvalue())
-                        temp_file_path = temp_file.name
-                    
-                    # Read DICOM file
-                    image_data, pixel_array = read_dicom_file(temp_file_path)
-                    
-                    # Display DICOM information
-                    with col1:
-                        st.subheader("Original Image")
-                        st.image(pixel_array, caption="Original DICOM Image", use_container_width=True)
-                        display_dicom_info(image_data)
-                    
-                    # Convert to format suitable for model
-                    processed_image = preprocess_image(pixel_array)
-                    
-                    # Clean up the temp file
-                    os.unlink(temp_file_path)
-                    
-                else:
-                    # For other image formats
-                    image = Image.open(uploaded_file)
-                    
-                    with col1:
-                        st.subheader("Original Image")
-                        st.image(image, caption=f"Original Image: {uploaded_file.name}", use_container_width=True)
-                    
-                    # Convert to numpy array and preprocess
-                    image_array = np.array(image)
-                    # Ensure image has proper color channels
-                    image_array = ensure_color_channels(image_array)
-                    processed_image = preprocess_image(image_array)
+            # Determine file type and read accordingly
+            file_extension = uploaded_file.name.split('.')[-1].lower()
             
-            # Process sample image
-            elif use_sample:
-                image_array = np.array(sample_image)
+            if file_extension == 'dcm':
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.dcm') as temp_file:
+                    temp_file.write(uploaded_file.getvalue())
+                    temp_file_path = temp_file.name
+                
+                # Read DICOM file
+                image_data, pixel_array = read_dicom_file(temp_file_path)
+                
+                # Display DICOM information
+                with col1:
+                    st.subheader("Original Image")
+                    st.image(pixel_array, caption="Original DICOM Image", use_container_width=True)
+                    display_dicom_info(image_data)
+                
+                # Convert to format suitable for model
+                processed_image = preprocess_image(pixel_array)
+                
+                # Clean up the temp file
+                os.unlink(temp_file_path)
+                
+            else:
+                # For other image formats
+                image = Image.open(uploaded_file)
                 
                 with col1:
-                    st.subheader("Original Sample Image")
-                    st.image(sample_image, caption=f"Sample: {sample_option}", use_container_width=True)
+                    st.subheader("Original Image")
+                    st.image(image, caption=f"Original Image: {uploaded_file.name}", use_container_width=True)
                 
+                # Convert to numpy array and preprocess
+                image_array = np.array(image)
                 # Ensure image has proper color channels
                 image_array = ensure_color_channels(image_array)
                 processed_image = preprocess_image(image_array)
