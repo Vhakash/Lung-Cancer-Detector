@@ -2,17 +2,36 @@ import numpy as np
 import time
 
 class MockModel:
-    """Mock model for demonstration purposes"""
+    """Mock model for demonstration purposes with accurate sample predictions"""
     def __init__(self, model_type="basic"):
         self.model_type = model_type
+        self.current_sample_case = None
+        
+    def set_sample_case(self, sample_case_name):
+        """Set the current sample case for accurate prediction"""
+        self.current_sample_case = sample_case_name
         
     def predict(self, image):
-        """Simulate prediction with random but realistic values"""
+        """Simulate prediction with accurate values for sample cases"""
         # Simulate processing time
         time.sleep(0.1 if self.model_type == "basic" else 0.2)
         
-        # Generate realistic prediction values
-        # For cancer detection: 0 = Normal, 1 = Cancer
+        # If this is a sample case, return accurate prediction
+        if self.current_sample_case:
+            from sample_data import get_expected_diagnosis
+            diagnosis = get_expected_diagnosis(self.current_sample_case)
+            
+            # Add small random variation to simulate model uncertainty
+            base_prediction = diagnosis["prediction"]
+            variation = np.random.uniform(-0.05, 0.05)
+            prediction = np.clip(base_prediction + variation, 0.01, 0.99)
+            
+            # Reset sample case after prediction
+            self.current_sample_case = None
+            
+            return np.array([[prediction]])
+        
+        # For uploaded images, generate realistic random predictions
         if self.model_type == "transfer":
             # Transfer learning model should be more accurate
             prediction = np.random.uniform(0.1, 0.9)

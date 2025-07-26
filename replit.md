@@ -51,10 +51,11 @@ The application follows a modular architecture with clear separation of concerns
 - **Analysis History**: Session-based tracking of previous analyses
 - **Confidence Calculations**: Prediction confidence scoring
 
-### 6. Sample Data System (sample_data.py)
-- **Synthetic Images**: Programmatically generated lung images
-- **Demo Content**: Normal and suspicious lung image samples
-- **Educational Purpose**: Allows testing without real medical data
+### 6. Medical Sample Data System (sample_data.py)
+- **Medically Accurate Cases**: Six realistic medical cases with known diagnoses
+- **Clinical Patterns**: Based on real radiological features from medical literature
+- **Educational Cases**: Normal X-ray, Stage 1/3 lung cancer, normal CT, benign nodule, advanced cancer
+- **Accurate Predictions**: Sample cases return clinically appropriate AI confidence levels
 
 ## Data Flow
 
