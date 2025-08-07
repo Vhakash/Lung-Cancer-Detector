@@ -15,13 +15,13 @@ print("App is starting...")
 from model import MockModel, create_model, load_pretrained_model
 from preprocessing import preprocess_image, ensure_color_channels
 from visualization import visualize_prediction, visualize_model_performance, visualize_activation_maps, visualize_feature_maps
-from utils import read_dicom_file, display_dicom_info, calculate_prediction_confidence, add_to_history, get_analysis_history, clear_analysis_history, compare_model_performances, initialize_analysis_history
+from utils import read_dicom_file, display_dicom_info, calculate_prediction_confidence, add_to_history, get_analysis_history, clear_analysis_history, compare_model_performances, init_db
 
 from image_enhancement import apply_enhancement, get_available_enhancements
 from sample_data import get_sample_image, get_sample_image_names, get_sample_image_description
 
 # Initialize session state for tracking analysis history
-initialize_analysis_history()
+init_db()
 
 # Set page configuration
 st.set_page_config(
