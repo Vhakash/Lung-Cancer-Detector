@@ -54,7 +54,7 @@ def add_to_history(image, model_type, prediction, enhancement = None):
         INSERT INTO history (timestamp, image_path, model_type, prediction_value, prediction_label, confidence, enhancement)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         ''',
-        (current_time, image_path, model_type, float(prediction[0][0]), label, confidence, enhancement)
+        (current_time, image_path, model_type, float(prediction[0][0]), label, float(confidence), enhancement)
     )
     conn.commit()
     c.close()
