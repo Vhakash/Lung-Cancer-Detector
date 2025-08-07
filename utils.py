@@ -5,6 +5,81 @@ import pandas as pd
 from datetime import datetime
 from preprocessing import normalize_dicom_image
 import time
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from PIL import Image
+import os
+
+def get_db_connection():
+    """"Establish a connection to the postgreSQL database."""
+    conn = psycopg2.connect(**st.secrets["postgres"])
+    return conn
+
+def init_db():
+    """Initialize the PostgreSQL database and create the history table."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS history (
+              id SERIAL PRIMARY KEY,
+              timestamp TIMESTAMP,
+              image_path VARCHAR(255),
+              model_type VARCHAR(50),
+              prediction_value REAL,
+              prediction_label VARCHAR(50),
+              confidence REAL,
+              enhancement VARCHAR(50)
+              );
+''')
+    conn.commit()
+    c.close()
+    conn.close()
+
+    if not os.path.exists('history_images'):
+        os.makedirs('history_images')
+
+def add_to_history(image, model_type, prediction, enhancement = None):
+    label, confidence = calculate_prediction_confidence(prediction[0][0])
+
+    #save the image file
+    current_time = datetime.now()
+    timestamp_str = current_time.strftime("%Y%m%d_%H%M%S")
+    image_path = f"history_images/{timestamp_str}.png"
+    Image.fromarray((image * 255).astype(np.uint8)).save(image_path)
+
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute(
+        '''
+        INSERT INTO history (timestamp, image_path, model_type, prediction_value, prediction_label, confidence, enhancement)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ''',
+        (current_time, image_path, model_type, float(prediction[0][0]), label, confidence, enhancement)
+    )
+    conn.commit()
+    c.close()
+    conn.close()        
+
+def get_analysis_history():
+    conn = get_db_connection()
+    c = conn.cursor(cursor_factory = RealDictCursor)
+    c.execute("SELECT * FROM history ORDER BY timestamp DESC LIMIT 10")
+    history = c.fetchall()
+    c.close()
+    conn.close()
+    return history
+
+def clear_analysis_history():
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("TRUNCATE TABLE history RESTART IDENTITY")
+    conn.commit()
+    c.close()
+    conn.close()
+
+    #optional : also delete saved image files
+    for f in os.listdir('history_images'):
+        os.remove(os.path.join('history_images', f))    
 
 def read_dicom_file(file_path):
     """Read and process DICOM file"""
@@ -80,40 +155,6 @@ def calculate_prediction_confidence(prediction_value):
         confidence = (1 - prediction_value) * 100
     
     return label, confidence
-
-def initialize_analysis_history():
-    """Initialize analysis history in session state"""
-    if 'analysis_history' not in st.session_state:
-        st.session_state.analysis_history = []
-
-def add_to_history(image, model_type, prediction, enhancement=None):
-    """Add analysis result to history"""
-    # Calculate prediction details
-    label, confidence = calculate_prediction_confidence(prediction[0][0])
-    
-    # Create history entry
-    entry = {
-        'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'image': image,
-        'model_type': model_type,
-        'prediction_value': prediction[0][0],
-        'prediction_label': label,
-        'confidence': confidence,
-        'enhancement': enhancement
-    }
-    
-    # Add to history (keep only last 10 entries)
-    st.session_state.analysis_history.append(entry)
-    if len(st.session_state.analysis_history) > 10:
-        st.session_state.analysis_history.pop(0)
-
-def get_analysis_history():
-    """Get analysis history"""
-    return st.session_state.analysis_history
-
-def clear_analysis_history():
-    """Clear analysis history"""
-    st.session_state.analysis_history = []
 
 def compare_model_performances():
     """Compare performance metrics between different models"""
