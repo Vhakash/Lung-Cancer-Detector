@@ -1,0 +1,25 @@
+# Core Streamlit and Web Framework
+streamlit>=1.28.0
+
+# Database
+psycopg2-binary>=2.9.7
+
+# Image Processing and Computer Vision
+Pillow>=10.0.0
+opencv-python>=4.8.0
+scikit-image>=0.21.0
+
+# Medical Image Processing
+pydicom>=2.4.0
+
+# Data Science and Machine Learning
+numpy>=1.24.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Deep Learning (for mock models)
+tensorflow>=2.13.0
+
+# Utilities
+python-dateutil>=2.8.0

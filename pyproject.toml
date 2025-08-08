@@ -3,14 +3,17 @@ name = "repl-nix-workspace"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
-dependencies = [
-    "matplotlib>=3.10.3",
-    "numpy>=2.3.2",
-    "opencv-python>=4.11.0.86",
-    "pandas>=2.3.1",
-    "pillow>=11.3.0",
-    "pydicom>=3.0.1",
-    "scikit-image>=0.25.2",
-    "streamlit>=1.47.1",
-    "psycopg2-binary>=2.9.9",
-]
+
+# Dependencies commented out to prioritize requirements.txt for Streamlit Cloud deployment
+# This prevents "multiple requirements files" warning during deployment
+# dependencies = [
+#     "matplotlib>=3.10.3",
+#     "numpy>=2.3.2",
+#     "opencv-python>=4.11.0.86",
+#     "pandas>=2.3.1",
+#     "pillow>=11.3.0",
+#     "pydicom>=3.0.1",
+#     "scikit-image>=0.25.2",
+#     "streamlit>=1.47.1",
+#     "psycopg2-binary>=2.9.9",
+# ]
