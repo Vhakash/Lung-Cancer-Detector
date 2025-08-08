@@ -59,3 +59,6 @@ history_images/
 # Temporary files
 *.tmp
 *.temp
+
+# UV lock file - force Streamlit Cloud to use requirements.txt instead
+uv.lock
