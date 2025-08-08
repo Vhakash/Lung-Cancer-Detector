@@ -12,8 +12,8 @@ scikit-image>=0.21.0
 # Medical Image Processing
 pydicom>=2.4.0
 
-# Data Science and Machine Learning
-numpy>=1.24.0
+# Data Science and Machine Learning - Updated versions for compatibility
+numpy>=2.3.2
 pandas>=2.0.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
