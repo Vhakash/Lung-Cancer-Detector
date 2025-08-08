@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a Streamlit-based web application for lung cancer detection using AI. The application provides a user-friendly interface for uploading medical images (CT scans, X-rays) and analyzing them for potential signs of lung cancer. It includes mock AI models, image preprocessing capabilities, visualization tools, and sample data for demonstration purposes.
+This is a Streamlit-based web application for lung cancer detection using AI. The application provides a user-friendly interface for uploading medical images (CT scans, X-rays) and analyzing them for potential signs of lung cancer. It includes mock AI models, image preprocessing capabilities, visualization tools, sample data for demonstration purposes, and **PostgreSQL database integration for persistent analysis history**.
 
 ## User Preferences
 
@@ -16,19 +16,26 @@ The application follows a modular architecture with clear separation of concerns
 - **Framework**: Streamlit web framework
 - **Layout**: Wide layout with responsive columns
 - **UI Components**: File upload, image display, interactive controls, charts and visualizations
-- **Session Management**: Streamlit session state for analysis history tracking
+- **Session Management**: Streamlit session state for temporary data + PostgreSQL for persistent history
 
 ### Backend Architecture
 - **Core Framework**: Python-based modular design
 - **Model Layer**: Mock AI models simulating cancer detection with configurable accuracy
 - **Processing Pipeline**: Image preprocessing, enhancement, and analysis workflow
-- **Data Layer**: In-memory session state for temporary data storage
+- **Data Layer**: PostgreSQL database for persistent analysis history + session state for temporary data
+- **File Storage**: Local image storage in `history_images/` directory
+
+### Database Architecture
+- **Database**: PostgreSQL with psycopg2 connector
+- **Schema**: Analysis history table with timestamps, predictions, model types, and image paths
+- **Persistence**: Cross-session data retention and historical analysis tracking
+- **Configuration**: Streamlit secrets management for database credentials
 
 ## Key Components
 
 ### 1. Main Application (app.py)
 - **Purpose**: Entry point and UI orchestration
-- **Features**: File upload interface, model selection, results display
+- **Features**: File upload interface, model selection, results display, persistent history view
 - **Architecture**: Component-based layout with column organization
 
 ### 2. AI Model System (model.py)
@@ -46,10 +53,12 @@ The application follows a modular architecture with clear separation of concerns
 - **Performance Metrics**: Model accuracy, precision, recall displays
 - **Activation Maps**: Feature visualization for model interpretability
 
-### 5. Utility Functions (utils.py)
+### 5. Database & Utility Functions (utils.py)
+- **PostgreSQL Integration**: Database connection, schema initialization, and CRUD operations
+- **Analysis History**: Persistent tracking of analyses across sessions
 - **DICOM Processing**: Medical image file handling and metadata display
-- **Analysis History**: Session-based tracking of previous analyses
 - **Confidence Calculations**: Prediction confidence scoring
+- **Image Storage**: Local file system management for analyzed images
 
 ### 6. Medical Sample Data System (sample_data.py)
 - **Medically Accurate Cases**: Six realistic medical cases with known diagnoses
@@ -65,7 +74,24 @@ The application follows a modular architecture with clear separation of concerns
 4. **Enhancement** (Optional): User-selected image enhancement techniques
 5. **Model Prediction**: Mock AI model generates cancer detection probability
 6. **Visualization**: Results displayed with confidence metrics and visualizations
-7. **History Tracking**: Analysis results stored in session state
+7. **Database Storage**: Analysis results and images saved to PostgreSQL + local storage
+8. **History Tracking**: Persistent analysis history accessible across sessions
+
+## Database Schema
+
+### History Table
+```sql
+CREATE TABLE IF NOT EXISTS history (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP,
+    image_path VARCHAR(255),
+    model_type VARCHAR(50),
+    prediction_value REAL,
+    prediction_label VARCHAR(50),
+    confidence REAL,
+    enhancement VARCHAR(50)
+);
+```
 
 ## External Dependencies
 
@@ -78,6 +104,10 @@ The application follows a modular architecture with clear separation of concerns
 - **Matplotlib**: Data visualization
 - **Pandas**: Data manipulation
 
+### Database
+- **PostgreSQL**: Primary database system
+- **psycopg2-binary**: PostgreSQL adapter for Python
+
 ### Medical Imaging
 - **PyDICOM**: DICOM medical image format support
 - **Scikit-image**: Advanced image processing
@@ -86,16 +116,37 @@ The application follows a modular architecture with clear separation of concerns
 - **PIL ImageEnhance**: Basic image enhancement
 - **Scikit-image exposure**: Advanced exposure correction
 
+## Setup and Configuration
+
+### Database Setup
+1. **PostgreSQL Installation**: Ensure PostgreSQL is installed and running
+2. **Database Creation**: Create a database for the application
+3. **Streamlit Secrets**: Configure database credentials in `.streamlit/secrets.toml`:
+   ```toml
+   [postgres]
+   host = "your_host"
+   port = "5432"
+   database = "your_database"
+   user = "your_username"
+   password = "your_password"
+   ```
+
+### Application Setup
+1. **Install Dependencies**: `pip install -r requirements.txt` or use `pyproject.toml`
+2. **Initialize Database**: Run the application once to auto-create the history table
+3. **Create Directories**: The app will automatically create `history_images/` folder
+
 ## Deployment Strategy
 
 ### Development Environment
-- **Platform**: Replit-compatible Python environment
+- **Platform**: Compatible with local development and cloud platforms
 - **Dependencies**: All requirements installable via pip
-- **No External Services**: Self-contained application without external API dependencies
+- **Database**: Requires PostgreSQL instance (local or cloud)
 
 ### Production Considerations
-- **Scaling**: Stateless design allows horizontal scaling
-- **Security**: No persistent data storage, session-based state management
+- **Scaling**: Stateless application design with persistent database storage
+- **Security**: Database credentials managed through Streamlit secrets
+- **Data Persistence**: Analysis history and images stored permanently
 - **Medical Compliance**: Mock data only - requires real model integration for medical use
 
 ### Architecture Benefits
@@ -103,8 +154,12 @@ The application follows a modular architecture with clear separation of concerns
 2. **Extensibility**: Mock model interface enables real AI model integration
 3. **Educational Value**: Sample data system provides safe testing environment
 4. **Medical Standards**: DICOM support for standard medical imaging workflows
+5. **Data Persistence**: PostgreSQL integration enables historical analysis and trends
+6. **Scalability**: Database-backed architecture supports multiple users and large datasets
 
 ### Technical Decisions
+
+**PostgreSQL Integration**: Added to provide persistent data storage, enabling analysis history tracking across sessions and supporting future analytics capabilities.
 
 **Mock Model Approach**: Chosen to create a functional demo without requiring large AI model files or training data. Allows focus on UI/UX and application architecture.
 
@@ -112,4 +167,24 @@ The application follows a modular architecture with clear separation of concerns
 
 **Modular Design**: Enables independent development and testing of components. Facilitates future integration of real AI models.
 
-**Session State Management**: Uses Streamlit's built-in session state for temporary data storage, avoiding need for external database in demo environment.
+**Hybrid Storage Strategy**: Combines PostgreSQL for structured data with local file storage for images, optimizing performance and storage costs.
+
+## Features
+
+### Core Functionality
+- **Image Upload**: Support for DICOM and standard image formats
+- **AI Analysis**: Mock models with realistic prediction confidence
+- **Enhancement Tools**: Multiple image enhancement techniques
+- **Visualization**: Comprehensive result visualization and model performance metrics
+
+### Data Management
+- **Persistent History**: All analyses stored in PostgreSQL database
+- **Image Archive**: Analyzed images saved locally with database references
+- **Cross-Session Access**: History available across application restarts
+- **Data Export**: Analysis results can be queried and exported
+
+### User Interface
+- **Responsive Design**: Optimized for different screen sizes
+- **Interactive Controls**: Real-time parameter adjustment
+- **Medical Compliance**: Clear disclaimers and professional guidance
+- **Educational Focus**: Sample cases with known diagnoses for learning
