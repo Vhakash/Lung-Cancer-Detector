@@ -12,74 +12,106 @@ import os
 
 def get_db_connection():
     """"Establish a connection to the postgreSQL database."""
-    conn = psycopg2.connect(**st.secrets["postgres"])
-    return conn
+    try:
+        # Check if we have a connection string (for cloud databases like Neon)
+        if "connection_string" in st.secrets["postgres"]:
+            conn = psycopg2.connect(st.secrets["postgres"]["connection_string"])
+        else:
+            # Add SSL mode for cloud database connections (like Neon)
+            connection_params = dict(st.secrets["postgres"])
+            connection_params["sslmode"] = "require"
+            conn = psycopg2.connect(**connection_params)
+        return conn
+    except Exception as e:
+        st.error(f"Database connection failed: {str(e)}")
+        st.error("Please check your database configuration in Streamlit Cloud secrets.")
+        st.stop()
 
 def init_db():
     """Initialize the PostgreSQL database and create the history table."""
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS history (
-              id SERIAL PRIMARY KEY,
-              timestamp TIMESTAMP,
-              image_path VARCHAR(255),
-              model_type VARCHAR(50),
-              prediction_value REAL,
-              prediction_label VARCHAR(50),
-              confidence REAL,
-              enhancement VARCHAR(50)
-              );
-''')
-    conn.commit()
-    c.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS history (
+                  id SERIAL PRIMARY KEY,
+                  timestamp TIMESTAMP,
+                  image_path VARCHAR(255),
+                  model_type VARCHAR(50),
+                  prediction_value REAL,
+                  prediction_label VARCHAR(50),
+                  confidence REAL,
+                  enhancement VARCHAR(50)
+                  );
+        ''')
+        conn.commit()
+        c.close()
+        conn.close()
 
-    if not os.path.exists('history_images'):
-        os.makedirs('history_images')
+        if not os.path.exists('history_images'):
+            os.makedirs('history_images')
+            
+        print("Database initialized successfully!")
+        
+    except Exception as e:
+        st.error(f"Database initialization failed: {str(e)}")
+        st.error("The app will continue without database functionality.")
+        st.warning("Analysis history will not be saved.")
+        # Don't stop the app, just disable database features
 
 def add_to_history(image, model_type, prediction, enhancement = None):
-    label, confidence = calculate_prediction_confidence(prediction[0][0])
+    try:
+        label, confidence = calculate_prediction_confidence(prediction[0][0])
 
-    #save the image file
-    current_time = datetime.now()
-    timestamp_str = current_time.strftime("%Y%m%d_%H%M%S")
-    image_path = f"history_images/{timestamp_str}.png"
-    Image.fromarray((image * 255).astype(np.uint8)).save(image_path)
+        #save the image file
+        current_time = datetime.now()
+        timestamp_str = current_time.strftime("%Y%m%d_%H%M%S")
+        image_path = f"history_images/{timestamp_str}.png"
+        Image.fromarray((image * 255).astype(np.uint8)).save(image_path)
 
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute(
-        '''
-        INSERT INTO history (timestamp, image_path, model_type, prediction_value, prediction_label, confidence, enhancement)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ''',
-        (current_time, image_path, model_type, float(prediction[0][0]), label, float(confidence), enhancement)
-    )
-    conn.commit()
-    c.close()
-    conn.close()        
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute(
+            '''
+            INSERT INTO history (timestamp, image_path, model_type, prediction_value, prediction_label, confidence, enhancement)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''',
+            (current_time, image_path, model_type, float(prediction[0][0]), label, float(confidence), enhancement)
+        )
+        conn.commit()
+        c.close()
+        conn.close()        
+    except Exception as e:
+        st.error(f"Failed to add analysis to history: {str(e)}")
+        st.error("Analysis history will not be saved.")
 
 def get_analysis_history():
-    conn = get_db_connection()
-    c = conn.cursor(cursor_factory = RealDictCursor)
-    c.execute("SELECT * FROM history ORDER BY timestamp DESC LIMIT 10")
-    history = c.fetchall()
-    c.close()
-    conn.close()
-    return history
+    try:
+        conn = get_db_connection()
+        c = conn.cursor(cursor_factory = RealDictCursor)
+        c.execute("SELECT * FROM history ORDER BY timestamp DESC LIMIT 10")
+        history = c.fetchall()
+        c.close()
+        conn.close()
+        return history
+    except Exception as e:
+        st.error(f"Failed to retrieve analysis history: {str(e)}")
+        return []
 
 def clear_analysis_history():
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("TRUNCATE TABLE history RESTART IDENTITY")
-    conn.commit()
-    c.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("TRUNCATE TABLE history RESTART IDENTITY")
+        conn.commit()
+        c.close()
+        conn.close()
 
-    #optional : also delete saved image files
-    for f in os.listdir('history_images'):
-        os.remove(os.path.join('history_images', f))    
+        #optional : also delete saved image files
+        for f in os.listdir('history_images'):
+            os.remove(os.path.join('history_images', f))    
+    except Exception as e:
+        st.error(f"Failed to clear analysis history: {str(e)}")
 
 def read_dicom_file(file_path):
     """Read and process DICOM file"""
