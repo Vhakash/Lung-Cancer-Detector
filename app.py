@@ -1,394 +1,119 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
 import os
 import tempfile
-from PIL import Image
-import pydicom
-import io
 import time
-import random
 
-print("App is starting...")
-
-# Import our functionality from module files
-from model import MockModel, create_model, load_pretrained_model
-from preprocessing import preprocess_image, ensure_color_channels
-from visualization import visualize_prediction, visualize_model_performance, visualize_activation_maps, visualize_feature_maps
-from utils import read_dicom_file, display_dicom_info, calculate_prediction_confidence, add_to_history, get_analysis_history, clear_analysis_history, compare_model_performances, init_db
-
-from image_enhancement import apply_enhancement, get_available_enhancements
-from sample_data import get_sample_image, get_sample_image_names, get_sample_image_description
-
-# Initialize session state for tracking analysis history
-init_db()
-
-# Set page configuration
 st.set_page_config(
     page_title="Lung Cancer Detection",
     page_icon="🫁",
     layout="wide"
 )
 
-# Application title and description with a more creative design
-st.markdown("""
-# 🫁 Lung Cancer Detection AI
-""")
+st.write("🚀 App starting... UI loaded.")
 
-# Create a more engaging intro with columns
-col1, col2 = st.columns([2,1])
-with col1:
-    st.markdown("""
-    ### Early detection saves lives
-    This AI-powered tool analyzes medical images to detect potential signs of lung cancer.
-    Upload your own medical images or explore medically accurate sample cases with known diagnoses.
-    """)
-with col2:
-    st.markdown("### 🏥 Medical AI Technology")
-    st.markdown("Advanced deep learning for early detection")
-    
-# Add a divider for better visual organization
-st.divider()
+# --- Lazy imports ---
+@st.cache_resource
+def get_model(option):
+    from model import create_model, load_pretrained_model
+    if option == "Basic CNN":
+        return create_model()
+    return load_pretrained_model()
 
-# Sidebar with options
+@st.cache_resource
+def init_database():
+    from utils import init_db
+    try:
+        init_db()
+    except Exception as e:
+        st.error(f"Database init failed: {e}")
+
+# Sidebar
 st.sidebar.markdown("## 🔧 Analysis Settings")
-
-# Model options with emojis for visual appeal
-st.sidebar.markdown("### 🧠 Model Selection")
 model_option = st.sidebar.selectbox(
     "Choose AI Model",
-    ["Basic CNN", "InceptionV3 Transfer Learning"],
-    index=0
+    ["Basic CNN", "InceptionV3 Transfer Learning"], index=0
 )
-
-# Visualization options
-st.sidebar.markdown("### 📊 Visualization Tools")
 visualization_option = st.sidebar.selectbox(
     "Choose Visualization",
-    ["Prediction Confidence", "Class Activation Maps", "Feature Maps"],
-    index=0
+    ["Prediction Confidence", "Class Activation Maps", "Feature Maps"], index=0
 )
 
-# Image Enhancement options with emoji
-st.sidebar.markdown("### 🔍 Image Enhancement")
-enhancement_option = st.sidebar.selectbox(
-    "Enhancement Technique",
-    ["None"] + get_available_enhancements(),
-    index=0
-)
+# Initialize DB (safe)
+init_database()
 
-enhancement_strength = st.sidebar.slider(
-    "Enhancement Strength",
-    min_value=0.5,
-    max_value=1.5,
-    value=1.0,
-    step=0.1,
-    disabled=(enhancement_option == "None")
-)
-
-# Sample Medical Cases with emoji
-st.sidebar.markdown("### 🔬 Medical Sample Cases")
-sample_option = st.sidebar.selectbox(
-    "Select Medically Accurate Case",
-    ["None"] + get_sample_image_names(),
-    index=0
-)
-
-# Show sample description if selected
-if sample_option != "None":
-    description = get_sample_image_description(sample_option)
-    with st.sidebar.expander("📋 Case Details"):
-        st.write(description)
-
-
-
-# Model Comparison
-if st.sidebar.button("Compare Models"):
-    st.session_state.show_model_comparison = True
-else:
-    if 'show_model_comparison' not in st.session_state:
-        st.session_state.show_model_comparison = False
-
-# Analysis History
-if st.sidebar.button("View Analysis History"):
-    st.session_state.show_history = True
-else:
-    if 'show_history' not in st.session_state:
-        st.session_state.show_history = False
-        
-# Clear History
-if st.sidebar.button("Clear History"):
-    clear_analysis_history()
-    st.sidebar.success("Analysis history cleared!")
-    if 'show_history' in st.session_state:
-        st.session_state.show_history = False
-
-# Initialize session state variables if they don't exist
-if 'model' not in st.session_state:
-    if model_option == "Basic CNN":
-        st.session_state.model = create_model()
-    else:
-        st.session_state.model = load_pretrained_model()
-
-# Check if model changed
-if 'model_option' not in st.session_state or st.session_state.model_option != model_option:
+# Load model only when needed
+if 'model' not in st.session_state or st.session_state.get('model_option') != model_option:
+    with st.spinner("Loading model... Please wait"):
+        st.session_state.model = get_model(model_option)
     st.session_state.model_option = model_option
-    if model_option == "Basic CNN":
-        st.session_state.model = create_model()
-    else:
-        st.session_state.model = load_pretrained_model()
 
-# Model Comparison View
-if st.session_state.show_model_comparison:
-    st.subheader("Model Comparison")
-    
-    # Get performance metrics
-    metrics_df = compare_model_performances()
-    
-    # Display the metrics table
-    st.dataframe(metrics_df)
-    
-    # Create a bar chart for visual comparison
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Get metrics without the model names and processing time for bar chart
-    plot_metrics = metrics_df.drop(columns=['Model Type', 'Processing Time (ms)'])
-    
-    # Plot
-    plot_metrics.plot(kind='bar', ax=ax)
-    ax.set_ylabel('Score')
-    ax.set_title('Model Performance Comparison')
-    ax.set_ylim(0, 1.1)
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=4)
-    
-    st.pyplot(fig)
-    
-    # Add explanatory text
-    st.markdown("""
-    ### Comparison Insights
-    - **Transfer Learning Model** generally shows better performance across all metrics.
-    - The improved performance comes at a cost of slightly increased processing time.
-    - For critical diagnostic applications, the Transfer Learning model would be preferred.
-    - For faster screening applications where speed is important, the Basic CNN may be sufficient.
-    """)
-    
-    # Button to close the comparison view
-    if st.button("Close Comparison View"):
-        st.session_state.show_model_comparison = False
-        st.rerun()
+# Main UI
+st.markdown("# 🫁 Lung Cancer Detection AI")
+st.markdown("### Early detection saves lives. Upload medical images or try sample cases.")
 
-# History View
-if st.session_state.show_history:
-    st.subheader("Analysis History")
-    
-    # Get history
-    history = get_analysis_history()
-    
-    if not history:
-        st.info("No analysis history available. Analyze some images to build history.")
-    else:
-        # Create tabs for each history entry
-        tab_labels = [f"Analysis {i+1} - {h['timestamp']}" for i, h in enumerate(history)]
-        tabs = st.tabs(tab_labels)
-        
-        for i, (tab, entry) in enumerate(zip(tabs, history)):
-            with tab:
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.image(entry['image'], caption=f"Image {i+1}", use_container_width=True)
-                    
-                with col2:
-                    st.write(f"**Timestamp:** {entry['timestamp']}")
-                    st.write(f"**Model:** {entry['model_type']}")
-                    
-                    # Display enhancement info if available
-                    if entry['enhancement']:
-                        st.write(f"**Enhancement:** {entry['enhancement']}")
-                    
-                    # Display prediction result
-                    if entry['prediction_label'] == 'Cancer':
-                        st.error(f"**Prediction:** {entry['prediction_label']} (Confidence: {entry['confidence']:.2f}%)")
-                    else:
-                        st.success(f"**Prediction:** {entry['prediction_label']} (Confidence: {entry['confidence']:.2f}%)")
-        
-        # Button to close history view
-        if st.button("Close History View"):
-            st.session_state.show_history = False
-            st.rerun()
-            
-# If we're not in a special view, show the main interface
-if not (st.session_state.show_model_comparison or st.session_state.show_history):
-    # Create header section for main interface
-    st.header("Analyze Medical Image")
-    
-    # Input method tabs
-    tab1, tab2 = st.tabs(["📤 Upload Image", "🔬 Medical Sample Cases"])
-    
-    use_sample = False
-    uploaded_file = None
-    
-    # Tab 1: Upload Image
-    with tab1:
-        uploaded_file = st.file_uploader(
-            "Choose a lung CT scan or X-ray image file", 
-            type=["jpg", "jpeg", "png", "dcm"]
-        )
-    
-    # Tab 2: Sample Cases
-    with tab2:
-        if sample_option != "None":
-            st.write(f"**Selected Case:** {sample_option}")
-            sample_image = get_sample_image(sample_option)
-            if sample_image:
-                st.image(sample_image, caption=f"Medical Case: {sample_option}", use_container_width=True)
-                
-                # Show detailed case description
-                description = get_sample_image_description(sample_option)
-                st.info(f"**Clinical Description:** {description}")
-                use_sample = True
+uploaded_file = st.file_uploader(
+    "Choose a lung CT scan or X-ray image file", 
+    type=["jpg", "jpeg", "png", "dcm"]
+)
+
+if uploaded_file:
+    from utils import read_dicom_file, display_dicom_info
+    from preprocessing import preprocess_image, ensure_color_channels
+    from visualization import visualize_prediction, visualize_activation_maps, visualize_feature_maps, visualize_model_performance
+    from utils import calculate_prediction_confidence, add_to_history
+
+    col1, col2 = st.columns(2)
+
+    try:
+        file_ext = uploaded_file.name.split('.')[-1].lower()
+        if file_ext == 'dcm':
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.dcm') as temp_file:
+                temp_file.write(uploaded_file.getvalue())
+                temp_path = temp_file.name
+            dicom_data, pixel_array = read_dicom_file(temp_path)
+            os.unlink(temp_path)
+            with col1:
+                st.image(pixel_array, caption="Original DICOM Image", use_container_width=True)
+                display_dicom_info(dicom_data)
+            processed = preprocess_image(pixel_array)
         else:
-            st.info("Select a medical sample case from the sidebar to analyze a known diagnosis case.")
-    
-    # Process images (either uploaded or sample)
-    if uploaded_file is not None or use_sample:
-        # Creating columns for display
-        col1, col2 = st.columns(2)
-        
-        try:
-            # Process uploaded file
-            if uploaded_file is not None:
-                # Determine file type and read accordingly
-                file_extension = uploaded_file.name.split('.')[-1].lower()
-                
-                if file_extension == 'dcm':
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.dcm') as temp_file:
-                        temp_file.write(uploaded_file.getvalue())
-                        temp_file_path = temp_file.name
-                    
-                    # Read DICOM file
-                    image_data, pixel_array = read_dicom_file(temp_file_path)
-                    
-                    # Display DICOM information
-                    with col1:
-                        st.subheader("Original Image")
-                        st.image(pixel_array, caption="Original DICOM Image", use_container_width=True)
-                        display_dicom_info(image_data)
-                    
-                    # Convert to format suitable for model
-                    processed_image = preprocess_image(pixel_array)
-                    
-                    # Clean up the temp file
-                    os.unlink(temp_file_path)
-                    
-                else:
-                    # For other image formats
-                    image = Image.open(uploaded_file)
-                    
-                    with col1:
-                        st.subheader("Original Image")
-                        st.image(image, caption=f"Original Image: {uploaded_file.name}", use_container_width=True)
-                    
-                    # Convert to numpy array and preprocess
-                    image_array = np.array(image)
-                    # Ensure image has proper color channels
-                    image_array = ensure_color_channels(image_array)
-                    processed_image = preprocess_image(image_array)
-            
-            # Process sample image
-            elif use_sample:
-                image_array = np.array(sample_image)
-                
-                with col1:
-                    st.subheader("Medical Sample Case")
-                    st.image(sample_image, caption=f"Case: {sample_option}", use_container_width=True)
-                
-                # Ensure image has proper color channels
-                image_array = ensure_color_channels(image_array)
-                processed_image = preprocess_image(image_array)
-                
-                # Set the sample case for accurate prediction
-                st.session_state.model.set_sample_case(sample_option)
-            
-            # Apply enhancement if selected
-            if enhancement_option != "None":
-                with st.spinner(f'Applying {enhancement_option} enhancement...'):
-                    # Apply enhancement
-                    enhanced_image = apply_enhancement(
-                        processed_image,
-                        enhancement_option,
-                        enhancement_strength
-                    )
-                    
-                    # Show the enhanced image
-                    with col1:
-                        st.subheader("Enhanced Image")
-                        st.image(enhanced_image, caption=f"Enhanced with {enhancement_option}", use_container_width=True)
-                    
-                    # Use enhanced image for prediction
-                    final_image = enhanced_image
-            else:
-                # Use original processed image
-                final_image = processed_image
-            
-            # Make prediction
-            with st.spinner('Analyzing image...'):
-                start_time = time.time()
-                prediction = st.session_state.model.predict(np.expand_dims(final_image, axis=0))
-                end_time = time.time()
-                
-                # Calculate processing time
-                processing_time = (end_time - start_time) * 1000  # convert to ms
-                
-                # Add to history
-                add_to_history(
-                    final_image,
-                    "Transfer Learning" if model_option == "InceptionV3 Transfer Learning" else "Basic CNN",
-                    prediction,
-                    enhancement_option if enhancement_option != "None" else None
-                )
-                
-                # Display results
-                with col2:
-                    st.subheader("Analysis Results")
-                    
-                    # Classification result
-                    label, confidence = calculate_prediction_confidence(prediction[0][0])
-                    
-                    # Style the result display
-                    if label == "Cancer":
-                        st.error(f"⚠️ **{label} Detected**")
-                        st.error(f"Confidence: {confidence:.2f}%")
-                        st.warning("Please consult with a medical professional for proper diagnosis.")
-                    else:
-                        st.success(f"✅ **{label}**")
-                        st.success(f"Confidence: {confidence:.2f}%")
-                        st.info("No immediate concerns detected, but regular check-ups are recommended.")
-                    
-                    # Processing time info
-                    st.info(f"Processing time: {processing_time:.1f} ms")
-                    
-                    # Show selected visualization
-                    if visualization_option == "Prediction Confidence":
-                        visualize_prediction(prediction[0][0])
-                    elif visualization_option == "Class Activation Maps":
-                        visualize_activation_maps(st.session_state.model, final_image)
-                    elif visualization_option == "Feature Maps":
-                        visualize_feature_maps(st.session_state.model, final_image)
-                    
-                    # Model performance metrics
-                    st.subheader("Current Model Performance")
-                    visualize_model_performance(model_option)
-                    
-        except Exception as e:
-            st.error(f"Error processing image: {str(e)}")
-            st.info("Please ensure the image is a valid medical scan (CT or X-ray) and try again.")
+            img = Image.open(uploaded_file)
+            with col1:
+                st.image(img, caption="Original Image", use_container_width=True)
+            img_arr = ensure_color_channels(np.array(img))
+            processed = preprocess_image(img_arr)
 
-# Footer
+        with st.spinner("Analyzing image..."):
+            start = time.time()
+            pred = st.session_state.model.predict(np.expand_dims(processed, axis=0))
+            end = time.time()
+
+        label, conf = calculate_prediction_confidence(pred[0][0])
+        with col2:
+            if label == "Cancer":
+                st.error(f"⚠️ {label} detected - Confidence: {conf:.2f}%")
+            else:
+                st.success(f"✅ {label} - Confidence: {conf:.2f}%")
+            st.info(f"Processing time: {(end - start)*1000:.1f} ms")
+
+            if visualization_option == "Prediction Confidence":
+                visualize_prediction(pred[0][0])
+            elif visualization_option == "Class Activation Maps":
+                visualize_activation_maps(st.session_state.model, processed)
+            elif visualization_option == "Feature Maps":
+                visualize_feature_maps(st.session_state.model, processed)
+
+            visualize_model_performance(model_option)
+
+    except Exception as e:
+        st.error(f"Error: {e}")
+
 st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: gray;">
-    <p>⚠️ <strong>Medical Disclaimer:</strong> This AI tool is for educational and research purposes only. 
-    It should not be used as a substitute for professional medical advice, diagnosis, or treatment.</p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    "<div style='text-align: center; color: gray;'>⚠️ <b>Medical Disclaimer:</b> "
+    "This tool is for educational purposes only and not a substitute for professional diagnosis.</div>",
+    unsafe_allow_html=True
+)
