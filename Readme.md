@@ -118,18 +118,30 @@ CREATE TABLE IF NOT EXISTS history (
 
 ## Setup and Configuration
 
+### Security
+
+**⚠️ SECURITY WARNING**: The `secrets.toml` file contains sensitive database credentials and should NEVER be committed to version control!
+
+To properly configure your `secrets.toml` file:
+
+1. **Copy the template file**:
+   ```bash
+   cp .streamlit/secrets.toml.template .streamlit/secrets.toml
+   ```
+2. **Edit `.streamlit/secrets.toml` with your actual database credentials**:
+   ```toml
+   [postgres]
+   host = "your_actual_host"
+   port = 5432
+   database = "your_actual_database"
+   user = "your_actual_username"
+   password = "your_actual_password"
+   ```
+
 ### Database Setup
 1. **PostgreSQL Installation**: Ensure PostgreSQL is installed and running
 2. **Database Creation**: Create a database for the application
-3. **Streamlit Secrets**: Configure database credentials in `.streamlit/secrets.toml`:
-   ```toml
-   [postgres]
-   host = "your_host"
-   port = "5432"
-   database = "your_database"
-   user = "your_username"
-   password = "your_password"
-   ```
+3. **Streamlit Secrets**: Configure database credentials in `.streamlit/secrets.toml` (see Security section above)
 
 ### Application Setup
 1. **Install Dependencies**: `pip install -r requirements.txt` or use `pyproject.toml`
