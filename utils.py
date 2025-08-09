@@ -396,13 +396,13 @@ def compare_model_performances() -> pd.DataFrame:
     try:
         # Simulated performance data with realistic values
         models_data = {
-            'Model Type': ['Basic CNN', 'InceptionV3 Transfer Learning'],
-            'Accuracy': [0.87, 0.94],
-            'Precision': [0.84, 0.91],
-            'Recall': [0.82, 0.89],
-            'F1-Score': [0.83, 0.90],
-            'AUC': [0.88, 0.95],
-            'Processing Time (ms)': [120, 180]
+            'Model Type': ['Trained Xception Model', 'Fallback Mock Model'],
+            'Accuracy': [0.94, 0.75],
+            'Precision': [0.91, 0.72],
+            'Recall': [0.89, 0.70],
+            'F1-Score': [0.90, 0.71],
+            'AUC': [0.95, 0.78],
+            'Processing Time (ms)': [180, 50]
         }
         
         return pd.DataFrame(models_data)

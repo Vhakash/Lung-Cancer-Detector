@@ -8,11 +8,12 @@ import pydicom
 import io
 import time
 import random
+import tensorflow as tf
 
 print("App is starting...")
 
 # Import our functionality from module files
-from model import create_model, load_pretrained_model
+from model import create_model, load_pretrained_model, MockModel
 from preprocessing import preprocess_image, ensure_color_channels
 from visualization import visualize_prediction, visualize_model_performance, visualize_activation_maps, visualize_feature_maps
 from utils import read_dicom_file, display_dicom_info, calculate_prediction_confidence, add_to_history, get_analysis_history, clear_analysis_history, compare_model_performances, init_db
@@ -56,7 +57,7 @@ st.sidebar.markdown("## 🔧 Analysis Settings")
 st.sidebar.markdown("### 🧠 Model Selection")
 model_option = st.sidebar.selectbox(
     "Choose AI Model",
-    ["Basic CNN", "InceptionV3 Transfer Learning"],
+    ["Trained Xception Model", "Fallback Mock Model"],
     index=0
 )
 
@@ -107,18 +108,18 @@ if st.sidebar.button("Clear History"):
 
 # Initialize session state variables if they don't exist
 if 'model' not in st.session_state:
-    if model_option == "Basic CNN":
+    if model_option == "Trained Xception Model":
         st.session_state.model = create_model()
     else:
-        st.session_state.model = load_pretrained_model()
+        st.session_state.model = MockModel("basic")
 
 # Check if model changed
 if 'model_option' not in st.session_state or st.session_state.model_option != model_option:
     st.session_state.model_option = model_option
-    if model_option == "Basic CNN":
+    if model_option == "Trained Xception Model":
         st.session_state.model = create_model()
     else:
-        st.session_state.model = load_pretrained_model()
+        st.session_state.model = MockModel("basic")
 
 # Model Comparison View
 if st.session_state.show_model_comparison:
@@ -317,7 +318,7 @@ if not (st.session_state.show_model_comparison or st.session_state.show_history)
                 # Add to history
                 add_to_history(
                     processed_image,
-                    "Transfer Learning" if model_option == "InceptionV3 Transfer Learning" else "Basic CNN",
+                    model_option,
                     prediction,
                     None
                 )

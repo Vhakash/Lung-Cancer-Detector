@@ -61,7 +61,8 @@ class RealModel:
             # Convert multi-class prediction to binary (cancer vs normal)
             if prediction.shape[1] > 2:
                 # If multi-class, combine cancer classes vs normal
-                cancer_prob = np.sum(prediction[0][1:])  # Sum all cancer classes
+                cancer_prob = float(np.sum(prediction[0][1:]))  # Sum all cancer classes
+                cancer_prob = np.clip(cancer_prob, 0.0, 1.0)
                 return np.array([[cancer_prob]])
             else:
                 # If already binary, return as is
