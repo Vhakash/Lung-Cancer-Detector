@@ -12,7 +12,7 @@ import random
 print("App is starting...")
 
 # Import our functionality from module files
-from model import MockModel, create_model, load_pretrained_model
+from model import create_model, load_pretrained_model
 from preprocessing import preprocess_image, ensure_color_channels
 from visualization import visualize_prediction, visualize_model_performance, visualize_activation_maps, visualize_feature_maps
 from utils import read_dicom_file, display_dicom_info, calculate_prediction_confidence, add_to_history, get_analysis_history, clear_analysis_history, compare_model_performances, init_db
