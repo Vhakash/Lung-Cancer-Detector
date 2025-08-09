@@ -178,7 +178,18 @@ if st.session_state.show_history:
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.image(entry['image'], caption=f"Image {i+1}", use_container_width=True)
+                    # Load image from path if it exists
+                    if entry.get('image_path') and os.path.exists(entry['image_path']):
+                        try:
+                            image = Image.open(entry['image_path'])
+                            st.image(image, caption=f"Image {i+1}", use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Could not load image: {str(e)}")
+                            st.write(f"**Image Path:** {entry['image_path']}")
+                    else:
+                        st.write("**Image:** Not available")
+                        if entry.get('image_path'):
+                            st.write(f"**Image Path:** {entry['image_path']}")
                     
                 with col2:
                     st.write(f"**Timestamp:** {entry['timestamp']}")
