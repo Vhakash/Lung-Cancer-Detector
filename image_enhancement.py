@@ -8,10 +8,6 @@ def get_available_enhancements():
     return [
         "Contrast Enhancement",
         "CLAHE",
-        "Histogram Equalization", 
-        "Gaussian Blur",
-        "Sharpening",
-        "Edge Enhancement",
         "Gamma Correction",
         "Noise Reduction"
     ]
@@ -37,18 +33,6 @@ def apply_enhancement(image, enhancement_type, strength=1.0):
             
         elif enhancement_type == "CLAHE":
             enhanced_image = apply_clahe_enhancement(image, strength)
-            
-        elif enhancement_type == "Histogram Equalization":
-            enhanced_image = apply_histogram_equalization(image)
-            
-        elif enhancement_type == "Gaussian Blur":
-            enhanced_image = apply_gaussian_blur(image, strength)
-            
-        elif enhancement_type == "Sharpening":
-            enhanced_image = apply_sharpening(image, strength)
-            
-        elif enhancement_type == "Edge Enhancement":
-            enhanced_image = apply_edge_enhancement(image, strength)
             
         elif enhancement_type == "Gamma Correction":
             enhanced_image = apply_gamma_correction(image, strength)
@@ -86,65 +70,6 @@ def apply_clahe_enhancement(image, strength):
         # For grayscale images
         clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=(8,8))
         enhanced = clahe.apply(image)
-    
-    return enhanced
-
-def apply_histogram_equalization(image):
-    """Apply histogram equalization"""
-    if len(image.shape) == 3:
-        # For color images, equalize each channel
-        enhanced = np.zeros_like(image)
-        for i in range(3):
-            enhanced[:,:,i] = cv2.equalizeHist(image[:,:,i])
-    else:
-        # For grayscale images
-        enhanced = cv2.equalizeHist(image)
-    
-    return enhanced
-
-def apply_gaussian_blur(image, strength):
-    """Apply Gaussian blur"""
-    kernel_size = int(3 + (strength - 1.0) * 4)  # Scale kernel size with strength
-    if kernel_size % 2 == 0:
-        kernel_size += 1  # Ensure odd kernel size
-    
-    enhanced = cv2.GaussianBlur(image, (kernel_size, kernel_size), 0)
-    return enhanced
-
-def apply_sharpening(image, strength):
-    """Apply image sharpening"""
-    # Create sharpening kernel
-    kernel_strength = strength * 0.5
-    kernel = np.array([[-1,-1,-1],
-                      [-1, 9 + kernel_strength, -1],
-                      [-1,-1,-1]])
-    
-    enhanced = cv2.filter2D(image, -1, kernel)
-    enhanced = np.clip(enhanced, 0, 255).astype(np.uint8)
-    
-    return enhanced
-
-def apply_edge_enhancement(image, strength):
-    """Apply edge enhancement"""
-    if len(image.shape) == 3:
-        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-    else:
-        gray = image.copy()
-    
-    # Apply edge detection
-    edges = cv2.Canny(gray, 50, 150)
-    
-    # Create edge mask
-    edges_colored = np.zeros_like(image)
-    if len(image.shape) == 3:
-        for i in range(3):
-            edges_colored[:,:,i] = edges
-    else:
-        edges_colored = edges
-    
-    # Blend with original image
-    alpha = strength * 0.3
-    enhanced = cv2.addWeighted(image, 1.0, edges_colored, alpha, 0)
     
     return enhanced
 
