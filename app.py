@@ -10,8 +10,6 @@ import time
 import random
 import tensorflow as tf
 
-print("App is starting...")
-
 # Import our functionality from module files
 from model import create_model, load_pretrained_model, MockModel
 from preprocessing import preprocess_image, ensure_color_channels
@@ -19,6 +17,16 @@ from visualization import visualize_prediction, visualize_model_performance, vis
 from utils import read_dicom_file, display_dicom_info, calculate_prediction_confidence, add_to_history, get_analysis_history, clear_analysis_history, compare_model_performances, init_db
 
 from sample_data import get_sample_image, get_sample_image_names, get_sample_image_description
+
+# Initialize ALL session state variables FIRST to prevent AttributeError
+if 'show_model_comparison' not in st.session_state:
+    st.session_state.show_model_comparison = False
+if 'show_history' not in st.session_state:
+    st.session_state.show_history = False
+if 'model' not in st.session_state:
+    st.session_state.model = None
+if 'model_option' not in st.session_state:
+    st.session_state.model_option = None
 
 # Initialize session state for tracking analysis history
 init_db()
@@ -29,6 +37,8 @@ st.set_page_config(
     page_icon="🫁",
     layout="wide"
 )
+
+print("App is starting...")
 
 # Application title and description with a more creative design
 st.markdown("""
@@ -119,13 +129,6 @@ if st.sidebar.button("Clear History"):
     st.sidebar.success("Analysis history cleared!")
     if 'show_history' in st.session_state:
         st.session_state.show_history = False
-
-# Initialize session state variables if they don't exist
-if 'model' not in st.session_state:
-    if model_option == "Trained Xception Model":
-        st.session_state.model = create_model()
-    else:
-        st.session_state.model = MockModel("basic")
 
 # Check if model changed
 if 'model_option' not in st.session_state or st.session_state.model_option != model_option:
