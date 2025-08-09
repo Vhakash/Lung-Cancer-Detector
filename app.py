@@ -82,22 +82,36 @@ if sample_option != "None":
     description = get_sample_image_description(sample_option)
     with st.sidebar.expander("📋 Case Details"):
         st.write(description)
+    
+    # Auto-return to main interface when sample is selected
+    if st.session_state.get('show_model_comparison', False) or st.session_state.get('show_history', False):
+        st.sidebar.info("🔄 Returning to main interface to analyze selected sample...")
+        st.session_state.show_model_comparison = False
+        st.session_state.show_history = False
+        st.rerun()
 
-
+st.sidebar.markdown("---")
 
 # Model Comparison
 if st.sidebar.button("Compare Models"):
     st.session_state.show_model_comparison = True
-else:
-    if 'show_model_comparison' not in st.session_state:
-        st.session_state.show_model_comparison = False
+    st.session_state.show_history = False
+    st.rerun()
 
 # Analysis History
 if st.sidebar.button("View Analysis History"):
     st.session_state.show_history = True
-else:
-    if 'show_history' not in st.session_state:
+    st.session_state.show_model_comparison = False
+    st.rerun()
+
+# Return to Main Interface button (shown when in special views)
+if st.session_state.get('show_model_comparison', False) or st.session_state.get('show_history', False):
+    if st.sidebar.button("🏠 Return to Main Interface"):
+        st.session_state.show_model_comparison = False
         st.session_state.show_history = False
+        st.rerun()
+
+st.sidebar.markdown("---")
         
 # Clear History
 if st.sidebar.button("Clear History"):
