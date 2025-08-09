@@ -17,7 +17,6 @@ from preprocessing import preprocess_image, ensure_color_channels
 from visualization import visualize_prediction, visualize_model_performance, visualize_activation_maps, visualize_feature_maps
 from utils import read_dicom_file, display_dicom_info, calculate_prediction_confidence, add_to_history, get_analysis_history, clear_analysis_history, compare_model_performances, init_db
 
-from image_enhancement import apply_enhancement, get_available_enhancements
 from sample_data import get_sample_image, get_sample_image_names, get_sample_image_description
 
 # Initialize session state for tracking analysis history
@@ -67,23 +66,6 @@ visualization_option = st.sidebar.selectbox(
     "Choose Visualization",
     ["Prediction Confidence", "Class Activation Maps", "Feature Maps"],
     index=0
-)
-
-# Image Enhancement options with emoji
-st.sidebar.markdown("### 🔍 Image Enhancement")
-enhancement_option = st.sidebar.selectbox(
-    "Enhancement Technique",
-    ["None"] + get_available_enhancements(),
-    index=0
-)
-
-enhancement_strength = st.sidebar.slider(
-    "Enhancement Strength",
-    min_value=0.5,
-    max_value=1.5,
-    value=1.0,
-    step=0.1,
-    disabled=(enhancement_option == "None")
 )
 
 # Sample Medical Cases with emoji
@@ -203,7 +185,7 @@ if st.session_state.show_history:
                     st.write(f"**Model:** {entry['model_type']}")
                     
                     # Display enhancement info if available
-                    if entry['enhancement']:
+                    if entry.get('enhancement'):
                         st.write(f"**Enhancement:** {entry['enhancement']}")
                     
                     # Display prediction result
@@ -308,33 +290,14 @@ if not (st.session_state.show_model_comparison or st.session_state.show_history)
                 processed_image = preprocess_image(image_array)
                 
                 # Set the sample case for accurate prediction
-                st.session_state.model.set_sample_case(sample_option)
-            
-            # Apply enhancement if selected
-            if enhancement_option != "None":
-                with st.spinner(f'Applying {enhancement_option} enhancement...'):
-                    # Apply enhancement
-                    enhanced_image = apply_enhancement(
-                        processed_image,
-                        enhancement_option,
-                        enhancement_strength
-                    )
-                    
-                    # Show the enhanced image
-                    with col1:
-                        st.subheader("Enhanced Image")
-                        st.image(enhanced_image, caption=f"Enhanced with {enhancement_option}", use_container_width=True)
-                    
-                    # Use enhanced image for prediction
-                    final_image = enhanced_image
-            else:
-                # Use original processed image
-                final_image = processed_image
+                if sample_option != "None":
+                    # Set the sample case for accurate prediction
+                    st.session_state.model.set_sample_case(sample_option)
             
             # Make prediction
             with st.spinner('Analyzing image...'):
                 start_time = time.time()
-                prediction = st.session_state.model.predict(np.expand_dims(final_image, axis=0))
+                prediction = st.session_state.model.predict(np.expand_dims(processed_image, axis=0))
                 end_time = time.time()
                 
                 # Calculate processing time
@@ -342,10 +305,10 @@ if not (st.session_state.show_model_comparison or st.session_state.show_history)
                 
                 # Add to history
                 add_to_history(
-                    final_image,
+                    processed_image,
                     "Transfer Learning" if model_option == "InceptionV3 Transfer Learning" else "Basic CNN",
                     prediction,
-                    enhancement_option if enhancement_option != "None" else None
+                    None
                 )
                 
                 # Display results
@@ -372,9 +335,9 @@ if not (st.session_state.show_model_comparison or st.session_state.show_history)
                     if visualization_option == "Prediction Confidence":
                         visualize_prediction(prediction[0][0])
                     elif visualization_option == "Class Activation Maps":
-                        visualize_activation_maps(st.session_state.model, final_image)
+                        visualize_activation_maps(st.session_state.model, processed_image)
                     elif visualization_option == "Feature Maps":
-                        visualize_feature_maps(st.session_state.model, final_image)
+                        visualize_feature_maps(st.session_state.model, processed_image)
                     
                     # Model performance metrics
                     st.subheader("Current Model Performance")
