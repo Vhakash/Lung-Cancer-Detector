@@ -43,14 +43,14 @@ def _get_raw_db_connection():
     if "postgres" not in st.secrets:
         raise Exception("PostgreSQL configuration not found in secrets")
     
-    # Check if we have a connection string (for cloud databases like Neon)
-    if "connection_string" in st.secrets["postgres"]:
-        return psycopg2.connect(st.secrets["postgres"]["connection_string"])
-    else:
-        # Add SSL mode for cloud database connections (like Neon)
-        connection_params = dict(st.secrets["postgres"])
-        connection_params["sslmode"] = "require"
-        return psycopg2.connect(**connection_params)
+    # Standard PostgreSQL connection using individual parameters
+    connection_params = dict(st.secrets["postgres"])
+    
+    # Remove SSL requirement for local PostgreSQL (add only if specified)
+    if "sslmode" not in connection_params:
+        connection_params["sslmode"] = "prefer"  # Use 'prefer' instead of 'require'
+    
+    return psycopg2.connect(**connection_params)
 
 def get_db_connection():
     """Establish a connection to the PostgreSQL database with comprehensive error handling."""
